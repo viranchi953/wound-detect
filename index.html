@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wound Analysis - AI Diagnostic Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .method-selector {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .method-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .method-btn.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .method-btn:not(.active) {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .webcam-container {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .webcam-container.active {
+            display: block;
+        }
+
+        canvas {
+            border: 2px solid #667eea;
+            border-radius: 15px;
+            max-width: 100%;
+        }
+
+        .control-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .results-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 15px;
+            display: none;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .result-label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .result-confidence {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .confidence-bar {
+            width: 100px;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-left: 15px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .loading::after {
+            content: "";
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .preview-image {
+            max-width: 300px;
+            max-height: 300px;
+            border-radius: 15px;
+            margin: 20px auto;
+            display: block;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .method-selector {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .control-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🩹 Wound Analysis AI</h1>
+        
+        <div class="method-selector">
+            <button class="method-btn active" onclick="switchMethod('upload')">📁 Upload Image</button>
+            <button class="method-btn" onclick="switchMethod('camera')">📷 Use Camera</button>
+        </div>
+
+        <!-- Upload Section -->
+        <div id="upload-section" class="input-section">
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-text">🖼️ Click to upload or drag & drop an image</div>
+                <div style="color: #999; font-size: 14px;">Supported formats: JPG, PNG, GIF</div>
+            </div>
+            <input type="file" id="fileInput" class="file-input" accept="image/*" onchange="handleFileSelect(event)">
+        </div>
+
+        <!-- Camera Section -->
+        <div id="camera-section" class="input-section" style="display: none;">
+            <div class="webcam-container" id="webcam-container">
+                <!-- Camera will be inserted here -->
+            </div>
+            <div class="control-buttons">
+                <button class="btn btn-primary" onclick="startCamera()">Start Camera</button>
+                <button class="btn btn-secondary" onclick="captureImage()">Capture Image</button>
+                <button class="btn btn-secondary" onclick="stopCamera()">Stop Camera</button>
+            </div>
+        </div>
+
+        <!-- Preview -->
+        <div id="preview-section" style="text-align: center; display: none;">
+            <img id="preview-image" class="preview-image" alt="Preview">
+        </div>
+
+        <!-- Results Section -->
+        <div id="results-section" class="results-section">
+            <h3 style="margin-bottom: 20px; color: #333;">🔍 Analysis Results</h3>
+            <div id="results-container">
+                <!-- Results will be inserted here -->
+            </div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            Analyzing image...
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script>
+        // Configuration
+        const MODEL_URL = "./my_model/";
+        const LABELS = ["Burns", "Surgical Wound", "Traumatic Wound", "Diabetic Foot"];
+        
+        let model, webcam, maxPredictions;
+        let currentMethod = 'upload';
+
+        // Initialize model
+        async function initModel() {
+            try {
+                const modelURL = MODEL_URL + "model.json";
+                const metadataURL = MODEL_URL + "metadata.json";
+                
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+                console.log("Model loaded successfully");
+            } catch (error) {
+                console.error("Error loading model:", error);
+                alert("Error loading AI model. Please check if model files are available.");
+            }
+        }
+
+        // Switch between upload and camera methods
+        function switchMethod(method) {
+            currentMethod = method;
+            
+            // Update button states
+            document.querySelectorAll('.method-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Show/hide sections
+            document.getElementById('upload-section').style.display = method === 'upload' ? 'block' : 'none';
+            document.getElementById('camera-section').style.display = method === 'camera' ? 'block' : 'none';
+            
+            // Hide results
+            hideResults();
+            
+            // Stop camera if switching away from camera
+            if (method !== 'camera' && webcam) {
+                stopCamera();
+            }
+        }
+
+        // Handle file upload
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        showPreview(img);
+                        predictFromImage(img);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Drag and drop functionality
+        function setupDragDrop() {
+            const uploadArea = document.querySelector('.upload-area');
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const img = new Image();
+                            img.onload = function() {
+                                showPreview(img);
+                                predictFromImage(img);
+                            };
+                            img.src = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                }
+            });
+        }
+
+        // Camera functions
+        async function startCamera() {
+            try {
+                const flip = true;
+                webcam = new tmImage.Webcam(320, 320, flip);
+                await webcam.setup();
+                await webcam.play();
+                
+                document.getElementById("webcam-container").appendChild(webcam.canvas);
+                document.getElementById("webcam-container").classList.add('active');
+                
+                // Start continuous prediction
+                window.requestAnimationFrame(cameraLoop);
+            } catch (error) {
+                console.error("Error starting camera:", error);
+                alert("Error accessing camera. Please ensure you have granted camera permissions.");
+            }
+        }
+
+        async function cameraLoop() {
+            if (webcam) {
+                webcam.update();
+                window.requestAnimationFrame(cameraLoop);
+            }
+        }
+
+        function captureImage() {
+            if (webcam) {
+                const canvas = webcam.canvas;
+                const ctx = canvas.getContext('2d');
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // Create a new canvas for preview
+                const previewCanvas = document.createElement('canvas');
+                previewCanvas.width = canvas.width;
+                previewCanvas.height = canvas.height;
+                const previewCtx = previewCanvas.getContext('2d');
+                previewCtx.putImageData(imageData, 0, 0);
+                
+                // Show preview
+                const previewImg = document.getElementById('preview-image');
+                previewImg.src = previewCanvas.toDataURL();
+                showPreview(previewImg);
+                
+                // Predict from canvas
+                predictFromCanvas(canvas);
+            }
+        }
+
+        function stopCamera() {
+            if (webcam) {
+                webcam.stop();
+                document.getElementById("webcam-container").classList.remove('active');
+                const canvas = document.querySelector('#webcam-container canvas');
+                if (canvas) {
+                    canvas.remove();
+                }
+                webcam = null;
+            }
+        }
+
+        // Prediction functions
+        async function predictFromImage(img) {
+            if (!model) {
+                alert("Model not loaded yet. Please wait and try again.");
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                const predictions = await model.predict(img);
+                displayResults(predictions);
+            } catch (error) {
+                console.error("Error during prediction:", error);
+                alert("Error analyzing image. Please try again.");
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function predictFromCanvas(canvas) {
+            if (!model) {
+                alert("Model not loaded yet. Please wait and try again.");
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                const predictions = await model.predict(canvas);
+                displayResults(predictions);
+            } catch (error) {
+                console.error("Error during prediction:", error);
+                alert("Error analyzing image. Please try again.");
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // UI functions
+        function showPreview(img) {
+            const previewSection = document.getElementById('preview-section');
+            const previewImage = document.getElementById('preview-image');
+            
+            if (img.src) {
+                previewImage.src = img.src;
+            }
+            
+            previewSection.style.display = 'block';
+        }
+
+        function displayResults(predictions) {
+            const resultsContainer = document.getElementById('results-container');
+            const resultsSection = document.getElementById('results-section');
+            
+            // Sort predictions by confidence
+            const sortedPredictions = predictions.sort((a, b) => b.probability - a.probability);
+            
+            resultsContainer.innerHTML = '';
+            
+            sortedPredictions.forEach(prediction => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                
+                const confidence = Math.round(prediction.probability * 100);
+                const confidenceColor = confidence > 70 ? '#4CAF50' : confidence > 40 ? '#FF9800' : '#F44336';
+                
+                resultItem.innerHTML = `
+                    <div class="result-label">${prediction.className}</div>
+                    <div style="display: flex; align-items: center;">
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${confidence}%; background: ${confidenceColor}"></div>
+                        </div>
+                        <div class="result-confidence" style="color: ${confidenceColor}">${confidence}%</div>
+                    </div>
+                `;
+                
+                resultsContainer.appendChild(resultItem);
+            });
+            
+            resultsSection.classList.add('active');
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            hideResults();
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function hideResults() {
+            document.getElementById('results-section').classList.remove('active');
+            document.getElementById('preview-section').style.display = 'none';
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            initModel();
+            setupDragDrop();
+        });
+    </script>
+</body>
+</html>
